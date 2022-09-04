@@ -1,6 +1,6 @@
-# Assignment 4
+# Assignment - Single Cycle CPU
 
-Implement Branch instructions
+Implement all instructions for RISC-V including Branch instructions
 
 ## Goals
 
@@ -33,18 +33,6 @@ $ riscv32-unknown-elf-objdump -d -Mnumeric,no-aliases dump.o
 
 ### Grading
 
-This and the previous assignment (ALU + L/S) use the same test setup.  Therefore if you submit the same code for both that is perfectly fine.  However, if you have trouble implementing branching, you are advised to ensure that the Load/Store is correctly implemented so you get full credit for A3 before proceeding to A4.
+This and the previous assignment (ALU + L/S) use the same test setup.  Therefore if you submit the same code for both that is perfectly fine.  However, if you have trouble implementing branching, you are advised to ensure that the Load/Store is correctly implemented first.
 
-## HowTo
-
-Fork this repository (`EE2003-2021/a4`) into your namespace so that you can edit and push changes.
-
-The `run.sh` script performs all the steps required to compile and test your code.  The `iverilog` compiler is used for running the verilog simulations.
-
-**IMPORTANT**: do not rename files or create new files - otherwise the auto-grader will not recognize it.  Even if you change the `.drone.yml` file, the system will repeat the tests with different configuration files, and your changes will most likely not be recognized then.
-
-Once you have confirmed that your code passes all the tests, commit all the changes, tag it for submission, and push to your repository.
-
-## Date
-
-Due Midnight, Sep 30, 2021
+Demonstrate the working simulation first to your TA, and then move on to the hardware demo on FPGA.  Both are required and you will need to explain the functioning of your code to the TA.
