@@ -20,6 +20,14 @@ The goal of the single cycle CPU is to implement all instructions (except `FENCE
 
 You need to implement code for the `cpu` module, that will read in the instructions and execute them. For this assignment, all functionality should be correct, so that the PC cannot be assumed to increment automatically by 4, and should be implemented correctly as per BRANCH instructions.
 
+You can run all the test cases by typing in the following command at the command line:
+
+```sh
+$ ./run.sh
+```
+
+This will compile the code using the `iverilog` compiler and run it against some test cases.  In case you add more files for your modules, you need to update the list of files in `program_file.txt`.
+
 ### Test cases
 
 Test cases are given under the `test/` folder, with appropriate imem and dmem files.  Each imem file contains a set of instructions at the end that will dump all the register values into the first several locations in dmem.  The test bench will then read out these values from dmem and compare with expected results.
