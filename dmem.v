@@ -30,10 +30,22 @@ module dmem (
     assign drdata = { mem3[a], mem2[a], mem1[a], mem0[a]};  
 
     always @(posedge clk) begin
-        if (dwe[3]) mem3[a] = dwdata[31:24];
-        if (dwe[2]) mem2[a] = dwdata[23:16];
-        if (dwe[1]) mem1[a] = dwdata[15: 8];
-        if (dwe[0]) mem0[a] = dwdata[ 7: 0];
+        if (dwe[3])
+        begin
+             mem3[a] = dwdata[31:24];
+        end
+        if (dwe[2])
+        begin
+             mem2[a] = dwdata[23:16];
+        end
+        if (dwe[1])
+        begin
+             mem1[a] = dwdata[15: 8];
+        end
+        if (dwe[0])
+        begin
+             mem0[a] = dwdata[ 7: 0];
+        end
     end
 
 
