@@ -1,6 +1,7 @@
+alu.v
+regfile.v
 cpu.v
-cpu_tb.v
 dmem.v
 imem.v
-regFile.v
-alu.v
+cpu_tb.v
+

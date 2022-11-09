@@ -5,7 +5,9 @@ module cpu (input clk,
             output [31:0] daddr,
             input [31:0] drdata,
             output [31:0] dwdata,
-            output [3:0] dwe);
+            output [3:0] dwe,
+            output [32*32-1:0] registers
+        );
     reg [31:0] iaddr;
     reg [31:0] daddr;
     reg [31:0] dwdata;
@@ -38,7 +40,6 @@ module cpu (input clk,
     assign rs2                     = idata[24:20];
     assign funct3                  = idata[14:12];
     assign funct7                  = idata[31:25];
-    assign registerWriteEnableWire = registerWriteEnableRegister;
     assign immStore                = {idata[31:25],idata[11:7]};
     assign immALU                  = idata[31:20];
     assign signExtendedIdata       = idata[registerValue1+{{20{imm[11]}},imm}];
@@ -73,7 +74,7 @@ module cpu (input clk,
     BLTU = 3'b110,
     BGEU = 3'b111;
     
-    regFile registers(
+    regFile registerFile(
     .rs2_value(registerValue2),
     .rs1_value(registerValue1),
     .debug_register(debug_register),
@@ -81,9 +82,10 @@ module cpu (input clk,
     .rs2_address(rs2),
     .wr_address(rd),
     .wr_value(writeValue),
-    .we(registerWriteEnableWire),
+    .we(registerWriteEnableRegister),
     .clk(clk),
-    .reset(reset)
+    .reset(reset),
+    .registers_rfile(registers)
     );
     
     alu alu32Bit(
@@ -95,28 +97,18 @@ module cpu (input clk,
     .funct7(funct7),
     .imm(imm)
     );
-    
-    imem IMEM(
-    .iaddr(iaddr),
-    .idata(idata)
-    );
-    
-    dmem DMEM(
-    .clk(clk),
-    .daddr(daddr),
-    .dwdata(dwdata),
-    .dwe(dwe),
-    .drdata(drdata)
-    );
-    
+
     
     always @(*)
     begin
         // if(iaddr == 32'h0000083c) $display("in");
+        if(~reset) begin
         if (opcode == LOAD)
         begin
             dwe = 4'b0000;
             imm = immALU;
+            iaddr_wire = iaddr + 4;
+            dwdata = 32'b0;
             case(funct3)
                 LB:
                 begin
@@ -162,12 +154,17 @@ module cpu (input clk,
                     daddr                       = registerValue1 + $signed({{20{imm[11]}},imm});
                     writeValue                  = {16'b0,drdata[15:0]};
                 end
-                default: registerWriteEnableRegister = 0;
+                default: begin
+                     registerWriteEnableRegister = 0;
+                     daddr = 32'd0;
+                     writeValue = 0;
+                     dwe = 4'b0000;
+                end
             endcase
-            iaddr_wire = iaddr + 4;
         end
         else if (opcode == STORE)
             begin imm = immStore;
+            writeValue = 32'd0;
             case(funct3)
                 SB:
                 begin
@@ -179,7 +176,7 @@ module cpu (input clk,
                         2'd1: dwe = 4'b0010;
                         2'd2: dwe = 4'b0100;
                         2'd3: dwe = 4'b1000;
-                        default: $display("Error");
+                        default: dwe = 4'b000;
                     endcase
                 end
                 SH:
@@ -199,6 +196,12 @@ module cpu (input clk,
                             dwdata = {registerValue2[15:0],16'b0};
                             daddr  = registerValue1 + $signed({{20{imm[11]}},imm});
                         end
+                        default:
+                        begin
+                            dwe = 4'b0000;
+                            dwdata = 32'd0;
+                            daddr = 32'd0;
+                        end                
                     endcase
                 end
                 SW:
@@ -212,47 +215,78 @@ module cpu (input clk,
                     end
                     else
                     begin
-                        $display("Error");
+                        dwe = 4'b0000;
+                        dwdata = 32'b0;
+                        daddr = 32'd0;
                     end
                 end
-                default:registerWriteEnableRegister = 1;
+                default: begin
+                    registerWriteEnableRegister = 1;
+                    dwe = 4'b000;
+                    dwdata = 32'b0;
+                    daddr = 32'd0;
+                end
             endcase
             iaddr_wire = iaddr + 4;
             end
         else if ({opcode[4],opcode[2]} == 2'b10)
         begin
+            imm                         = immALU;
+            $display("Idata is %x,immALU is %x,imm is %x",idata,immALU,imm);
             dwe                         = 4'b0000;
             registerWriteEnableRegister = 1;
-            imm                         = immALU;
             writeValue                  = aluResult;
+            $display("IN ALU,idata is %x, aluResult is %x",idata,aluResult);
             iaddr_wire = iaddr + 4;
+            daddr = 32'd0;
+            dwdata = 32'd0;
         end
             else if (opcode == LUI)
             begin
             registerWriteEnableRegister = 1;
             writeValue                  = {idata[31:12],12'b0};
             iaddr_wire = iaddr + 4;
+            imm = immALU;
+            daddr = 32'd0;
+            dwe = 4'b0000;
+            dwdata = 32'd0;
             end
             else if (opcode == AUIPC)
             begin
             registerWriteEnableRegister = 1;
             writeValue                  = iaddr + {idata[31:12],12'b0};
             iaddr_wire = iaddr + 4;
+            imm = immALU;
+            daddr = 32'd0;
+            dwe = 4'b0000;
+            dwdata = 32'd0;
             end
             else if (opcode == JAL)
             begin
                 registerWriteEnableRegister = 1;
                 writeValue = iaddr + 4;
                 iaddr_wire = iaddr + immJAL;
+                imm = immALU;  
+                daddr = 32'd0;  
+                dwe = 4'b000;            
+                dwdata = 32'd0;
             end
             else if (opcode == JALR)
             begin
                 registerWriteEnableRegister = 1;
                 writeValue = iaddr + 4;
                 iaddr_wire = (($signed({{20{immJALR[11]}},immJALR})+registerValue1) >> 1) << 1;
+                imm = immALU; 
+                daddr = 32'd0;
+                dwe = 4'b000;
+                dwdata = 32'd0;
             end
             else if (opcode == BRANCH)
             begin
+                imm = immBranch;
+                writeValue = 32'd0;
+                daddr = 32'd0;
+                dwdata = 32'd0;
                 case(funct3)
                     BEQ:
                     begin
@@ -314,42 +348,51 @@ module cpu (input clk,
                              iaddr_wire = iaddr + 4;
                         end
                     end
-                    default: $display("Error from opcode: %7b, funct3: %3b",opcode,funct3);
+                    default:begin
+                        registerWriteEnableRegister = 0;
+                        dwe = 4'b000;
+                        iaddr_wire = iaddr +  4;
+                    end
                 endcase
             end
-            else if(opcode == 7'd0 || idata == 32'd0)
-            begin
-                registerWriteEnableRegister = 0;
-                iaddr_wire = iaddr + 4;
-            end
+            // else if(opcode == 7'd0 || idata == 32'd0)
+            // begin
+            //     registerWriteEnableRegister = 0;
+            //     iaddr_wire = iaddr + 4;
+            //     imm = immALU;
+            //     writeValue = 32'b0;
+            //     daddr_wire = 32'b0;
+            //     dwe_wire = 4'b000;
+            //     dwdata_wire = 32'd0;
+            // end
             else
             begin
                 registerWriteEnableRegister = 0;
                 iaddr_wire = iaddr + 4;
+                imm = immALU;
+                writeValue = 32'b0;
+                daddr = 32'b0;
+                dwe = 4'b000;
+                dwdata = 32'd0;
             end
             end
+    else begin
+        iaddr_wire = 32'd0;
+        daddr = 32'bz;
+        dwe = 4'bz;
+        dwdata = 32'bz;
+        imm = immALU;
+        writeValue = 32'bz;
+        registerWriteEnableRegister = 1'b0;
+    end
+    end
             
             always @(posedge clk)
             begin
-                if (reset)
-                begin
-                    iaddr  <= 0;
-                    daddr  <= 0;
-                    dwdata <= 0;
-                    dwe    <= 0;
-                end
-                /* else if (opcode == 7'b0000000) begin */
-                /*     registerWriteEnableRegister <= 0; */
-                /*     dwe                         <= 4'b0000; */
-                /* end */
-                else
-                begin
-                //branch logic
-                
-                iaddr <= iaddr_wire;
+                if(reset) iaddr <= 0;
+                else iaddr <= iaddr_wire; 
             end
             
-            end
             
             
             

@@ -134,6 +134,7 @@ begin
         endcase
     end
 end
+else aluResult = 32'd0;
 end
 
 endmodule
